@@ -1,64 +1,54 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Package cmd will be deprecated.
-package cmd
+package app
 
 import (
 	"context"
 	"fmt"
+	"github.com/OpenIMSDK/protocol/constant"
 	"github.com/OpenIMSDK/tools/discoveryregistry"
 	"github.com/OpenIMSDK/tools/log"
 	"github.com/openimsdk/open-im-server/v3/internal/api"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/config"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/db/cache"
 	kdisc "github.com/openimsdk/open-im-server/v3/pkg/common/discoveryregister"
 	ginProm "github.com/openimsdk/open-im-server/v3/pkg/common/ginprometheus"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/prommetrics"
+	"github.com/spf13/cobra"
 	"net"
 	"strconv"
-
-	"github.com/OpenIMSDK/protocol/constant"
-	"github.com/spf13/cobra"
-
-	config2 "github.com/openimsdk/open-im-server/v3/pkg/common/config"
 )
 
-type ApiCmd struct {
-	*RootCmd
-}
-
-func NewApiCmd() *ApiCmd {
-	ret := &ApiCmd{NewRootCmd("api")}
-	ret.SetRootCmdPt(ret)
-
-	return ret
-}
-
-func (a *ApiCmd) AddApi(f func(port int, promPort int) error) {
-	a.Command.RunE = func(cmd *cobra.Command, args []string) error {
-		return f(a.getPortFlag(cmd), a.getPrometheusPortFlag(cmd))
+func NewAPIRouterCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "api",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			cfgFolderPath, _ := cmd.Flags().GetString(constant.FlagConf)
+			err := config.InitConfig(cfgFolderPath)
+			if err != nil {
+				return err
+			}
+			// apply default option(logger)
+			err = applyLogger()
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			port, err := cmd.Flags().GetInt(constant.FlagPort)
+			if err != nil {
+				fmt.Println("Error getting port flag:", err)
+			}
+			promPort, _ := cmd.Flags().GetInt(constant.FlagPrometheusPort)
+			if promPort == 0 {
+				promPort = config.Config.Prometheus.ApiPrometheusPort[0]
+			}
+			return run(port, promPort)
+		},
 	}
-}
 
-func (a *ApiCmd) GetPortFromConfig(portType string) int {
-	fmt.Println("GetPortFromConfig:", portType)
-	if portType == constant.FlagPort {
-		return config2.Config.Api.OpenImApiPort[0]
-	} else if portType == constant.FlagPrometheusPort {
-		return config2.Config.Prometheus.ApiPrometheusPort[0]
-	}
-	return 0
+	cmd.Flags().StringP(constant.FlagConf, "c", "", "path to config file folder")
+	cmd.Flags().IntP(constant.FlagPort, "p", 10002, "server listen port")
+	return cmd
 }
 
 func run(port int, proPort int) error {
@@ -87,34 +77,34 @@ func run(port int, proPort int) error {
 
 		return err
 	}
-	if err = client.CreateRpcRootNodes(config2.Config.GetServiceNames()); err != nil {
+	if err = client.CreateRpcRootNodes(config.Config.GetServiceNames()); err != nil {
 		log.ZError(context.Background(), "Failed to create RPC root nodes", err)
 
 		return err
 	}
 	log.ZInfo(context.Background(), "api register public config to discov")
-	if err = client.RegisterConf2Registry(constant.OpenIMCommonConfigKey, config2.Config.EncodeConfig()); err != nil {
+	if err = client.RegisterConf2Registry(constant.OpenIMCommonConfigKey, config.Config.EncodeConfig()); err != nil {
 		log.ZError(context.Background(), "Failed to register public config to discov", err)
 
 		return err
 	}
 	log.ZInfo(context.Background(), "api register public config to discov success")
 	router := api.NewGinRouter(client, rdb)
-	//////////////////////////////
-	if config2.Config.Prometheus.Enable {
+
+	if config.Config.Prometheus.Enable {
 		p := ginProm.NewPrometheus("app", prommetrics.GetGinCusMetrics("Api"))
 		p.SetListenAddress(fmt.Sprintf(":%d", proPort))
 		p.Use(router)
 	}
-	/////////////////////////////////
+
 	log.ZInfo(context.Background(), "api init router success")
 	var address string
-	if config2.Config.Api.ListenIP != "" {
-		address = net.JoinHostPort(config2.Config.Api.ListenIP, strconv.Itoa(port))
+	if config.Config.Api.ListenIP != "" {
+		address = net.JoinHostPort(config.Config.Api.ListenIP, strconv.Itoa(port))
 	} else {
 		address = net.JoinHostPort("0.0.0.0", strconv.Itoa(port))
 	}
-	log.ZInfo(context.Background(), "start api server", "address", address, "OpenIM version", config2.Version)
+	log.ZInfo(context.Background(), "start api server", "address", address, "OpenIM version", config.Version)
 
 	err = router.Run(address)
 	if err != nil {
@@ -124,4 +114,20 @@ func run(port int, proPort int) error {
 	}
 
 	return nil
+}
+
+// this is not done yet
+func applyLogger() error {
+	logConfig := config.Config.Log
+
+	return log.InitFromConfig(
+		"",
+		"",
+		logConfig.RemainLogLevel,
+		logConfig.IsStdout,
+		logConfig.IsJson,
+		logConfig.StorageLocation,
+		logConfig.RemainRotationCount,
+		logConfig.RotationTime,
+	)
 }
