@@ -1,24 +1,3 @@
-# Copyright © 2023 OpenIM. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the License);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# -----------------------------------------------------------------
-# TODO: This config file is the template file
-# --| source: deployments/templates/openim.yaml
-# --| env: scripts/install/environment
-# --| target: config/config.yaml
-# -----------------------------------------------------------------
-
 envs:
   discovery: zookeeper
 
@@ -31,7 +10,7 @@ envs:
 # Zookeeper password
 zookeeper:
   schema: openim
-  address: [ 172.28.0.1:12181 ]
+  address: [ 127.0.0.1:12181 ]
   username: ''
   password: ''
 
@@ -45,7 +24,7 @@ zookeeper:
 # Log level: 1=slient, 2=error, 3=warn, 4=info
 # Slow query threshold in milliseconds
 mysql:
-  address: [ 172.28.0.1:13306 ]
+  address: [ 127.0.0.1:13306 ]
   username: root
   password: openIM123
   database: openIM_v3
@@ -64,7 +43,7 @@ mysql:
 # Maximum connection pool size
 mongo:
   uri: ''
-  address: [ 172.28.0.1:37017 ]
+  address: [ 127.0.0.1:37017 ]
   database: openIM_v3
   username: root
   password: openIM123
@@ -75,7 +54,7 @@ mongo:
 #
 # Username is required only for Redis version 6.0+
 redis:
-  address: [ 172.28.0.1:16379 ]
+  address: [ 127.0.0.1:16379 ]
   username: ''
   password: openIM123
 
@@ -89,7 +68,7 @@ redis:
 kafka:
   username: ''
   password: ''
-  addr: [ 172.28.0.1:19094 ]
+  addr: [ 127.0.0.1:19094 ]
   latestMsgToRedis:
     topic: "latestMsgToRedis"
   offlineMsgToMongo:
@@ -116,6 +95,7 @@ rpc:
 #
 # API service port
 # Default listen IP is 0.0.0.0
+# this can be removed after refactor
 api:
   openImApiPort: [ 10002 ]
   listenIP: 0.0.0.0
@@ -176,6 +156,7 @@ rpcPort:
 
 ###################### RPC Register Name Configuration ######################
 # RPC service names for registration, it's not recommended to modify these
+# this can be removed after finish refactor
 rpcRegisterName:
   openImUserName: User
   openImFriendName: Friend
@@ -197,6 +178,7 @@ rpcRegisterName:
 # Whether to output to stdout
 # Whether to output in json format
 # Whether to include stack trace in logs
+# this can be removed after refactor
 log:
   storageLocation: ../logs/
   rotationTime: 24
@@ -381,6 +363,7 @@ callback:
 # Prometheus configuration for various services
 # The number of Prometheus ports per service needs to correspond to rpcPort
 # The number of ports needs to be consistent with msg_transfer_service_num in script/path_info.sh
+# todo this may not need when finish refactor
 prometheus:
   enable: false
   prometheusUrl: "https://openim.prometheus"
@@ -395,4 +378,4 @@ prometheus:
   conversationPrometheusPort: [ 20230 ]
   rtcPrometheusPort: [ 21300 ]
   thirdPrometheusPort: [ 21301 ]
-  messageTransferPrometheusPort: [ 21400, 21401, 21402, 21403 ] # List of ports
+  messageTransferPrometheusPort: [ 21400, 21401, 21402, 21403 ]  # List of ports

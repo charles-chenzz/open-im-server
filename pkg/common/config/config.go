@@ -21,7 +21,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Config configStruct
+var Config *configStruct
 
 const ConfKey = "conf"
 
@@ -51,13 +51,13 @@ type configStruct struct {
 	}
 	Zookeeper struct {
 		Schema   string   `yaml:"schema"`
-		ZkAddr   []string `yaml:"address"`
+		ZkAddr   []string `yaml:"address" mapstructure:"address"`
 		Username string   `yaml:"username"`
 		Password string   `yaml:"password"`
 	} `yaml:"zookeeper"`
 
 	Mysql struct {
-		Address       []string `yaml:"address"`
+		Address       []string `yaml:"address" mapstructure:"address"`
 		Username      string   `yaml:"username"`
 		Password      string   `yaml:"password"`
 		Database      string   `yaml:"database"`
@@ -70,7 +70,7 @@ type configStruct struct {
 
 	Mongo struct {
 		Uri         string   `yaml:"uri"`
-		Address     []string `yaml:"address"`
+		Address     []string `yaml:"address" mapstructure:"address"`
 		Database    string   `yaml:"database"`
 		Username    string   `yaml:"username"`
 		Password    string   `yaml:"password"`
@@ -79,7 +79,7 @@ type configStruct struct {
 
 	Redis struct {
 		ClusterMode    bool     `yaml:"clusterMode"`
-		Address        []string `yaml:"address"`
+		Address        []string `yaml:"address" mapstructure:"address"`
 		Username       string   `yaml:"username"`
 		Password       string   `yaml:"password"`
 		EnablePipeline bool     `yaml:"enablePipeline"`
@@ -90,7 +90,7 @@ type configStruct struct {
 		Password     string   `yaml:"password"`
 		ProducerAck  string   `yaml:"producerAck"`
 		CompressType string   `yaml:"compressType"`
-		Addr         []string `yaml:"addr"`
+		Addr         []string `yaml:"addr" mapstructure:"address"`
 		TLS          *struct {
 			CACrt              string `yaml:"caCrt"`
 			ClientCrt          string `yaml:"clientCrt"`

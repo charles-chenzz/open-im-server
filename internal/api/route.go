@@ -15,7 +15,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/OpenIMSDK/protocol/constant"
@@ -49,7 +48,7 @@ func NewGinRouter(discov discoveryregistry.SvcDiscoveryRegistry, rdb redis.Unive
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		_ = v.RegisterValidation("required_if", RequiredIf)
 	}
-	log.ZInfo(context.Background(), "load config", "config", config.Config)
+
 	r.Use(gin.Recovery(), mw.CorsHandler(), mw.GinParseOperationID())
 	// init rpc client here
 	userRpc := rpcclient.NewUser(discov)
