@@ -4,7 +4,7 @@ import (
 	"github.com/OpenIMSDK/tools/log"
 )
 
-type Logs struct {
+type Options struct {
 	StorageLocation     string `yaml:"storageLocation"`
 	RotationTime        uint   `yaml:"rotationTime"`
 	RemainRotationCount uint   `yaml:"remainRotationCount"`
@@ -15,7 +15,7 @@ type Logs struct {
 }
 
 // Apply log configuration to zap
-func Apply(option *Logs) error {
+func Apply(option *Options) error {
 	err := log.InitFromConfig(
 		"im-logs",
 		"api",

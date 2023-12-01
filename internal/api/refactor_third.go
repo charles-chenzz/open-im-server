@@ -1,75 +1,60 @@
-// Copyright © 2023 OpenIM. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package api
 
 import (
+	"github.com/OpenIMSDK/protocol/third"
+	"github.com/OpenIMSDK/tools/a2r"
+	"github.com/OpenIMSDK/tools/discoveryregistry"
+	"github.com/OpenIMSDK/tools/errs"
+	"github.com/OpenIMSDK/tools/mcontext"
+	"github.com/gin-gonic/gin"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/config"
+	"github.com/openimsdk/open-im-server/v3/pkg/rpcclient"
 	"math/rand"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
-
-	"github.com/OpenIMSDK/protocol/third"
-	"github.com/OpenIMSDK/tools/a2r"
-	"github.com/OpenIMSDK/tools/errs"
-	"github.com/OpenIMSDK/tools/mcontext"
-
-	"github.com/openimsdk/open-im-server/v3/pkg/rpcclient"
 )
 
-type ThirdApi rpcclient.Third
+type Third rpcclient.Third
 
-func NewThirdApi(client rpcclient.Third) ThirdApi {
-	return ThirdApi(client)
+func NewThird(discov discoveryregistry.SvcDiscoveryRegistry) Third {
+	return Third(*rpcclient.NewThird(discov))
 }
 
-func (o *ThirdApi) FcmUpdateToken(c *gin.Context) {
+func (o *Third) FcmUpdateToken(c *gin.Context) {
 	a2r.Call(third.ThirdClient.FcmUpdateToken, o.Client, c)
 }
 
-func (o *ThirdApi) SetAppBadge(c *gin.Context) {
+func (o *Third) SetAppBadge(c *gin.Context) {
 	a2r.Call(third.ThirdClient.SetAppBadge, o.Client, c)
 }
 
-// #################### s3 ####################
+// s3
 
-func (o *ThirdApi) PartLimit(c *gin.Context) {
+func (o *Third) PartLimit(c *gin.Context) {
 	a2r.Call(third.ThirdClient.PartLimit, o.Client, c)
 }
 
-func (o *ThirdApi) PartSize(c *gin.Context) {
+func (o *Third) PartSize(c *gin.Context) {
 	a2r.Call(third.ThirdClient.PartSize, o.Client, c)
 }
 
-func (o *ThirdApi) InitiateMultipartUpload(c *gin.Context) {
+func (o *Third) InitiateMultipartUpload(c *gin.Context) {
 	a2r.Call(third.ThirdClient.InitiateMultipartUpload, o.Client, c)
 }
 
-func (o *ThirdApi) AuthSign(c *gin.Context) {
+func (o *Third) AuthSign(c *gin.Context) {
 	a2r.Call(third.ThirdClient.AuthSign, o.Client, c)
 }
 
-func (o *ThirdApi) CompleteMultipartUpload(c *gin.Context) {
+func (o *Third) CompleteMultipartUpload(c *gin.Context) {
 	a2r.Call(third.ThirdClient.CompleteMultipartUpload, o.Client, c)
 }
 
-func (o *ThirdApi) AccessURL(c *gin.Context) {
+func (o *Third) AccessURL(c *gin.Context) {
 	a2r.Call(third.ThirdClient.AccessURL, o.Client, c)
 }
 
-func (o *ThirdApi) ObjectRedirect(c *gin.Context) {
+func (o *Third) ObjectRedirect(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
 		c.String(http.StatusBadRequest, "name is empty")
@@ -106,15 +91,20 @@ func (o *ThirdApi) ObjectRedirect(c *gin.Context) {
 	c.Redirect(http.StatusFound, resp.Url)
 }
 
-// #################### logs ####################.
-func (o *ThirdApi) UploadLogs(c *gin.Context) {
+// logs
+
+func (o *Third) UploadLogs(c *gin.Context) {
 	a2r.Call(third.ThirdClient.UploadLogs, o.Client, c)
 }
 
-func (o *ThirdApi) DeleteLogs(c *gin.Context) {
+func (o *Third) DeleteLogs(c *gin.Context) {
 	a2r.Call(third.ThirdClient.DeleteLogs, o.Client, c)
 }
 
-func (o *ThirdApi) SearchLogs(c *gin.Context) {
+func (o *Third) SearchLogs(c *gin.Context) {
 	a2r.Call(third.ThirdClient.SearchLogs, o.Client, c)
+}
+
+func GetPrometheus(c *gin.Context) {
+	c.Redirect(http.StatusFound, config.Config.Prometheus.PrometheusUrl)
 }

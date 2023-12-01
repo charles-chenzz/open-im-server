@@ -12,6 +12,7 @@ import (
 	"github.com/openimsdk/open-im-server/v3/pkg/common/db/cache"
 	kdisc "github.com/openimsdk/open-im-server/v3/pkg/common/discoveryregister"
 	"github.com/openimsdk/open-im-server/v3/pkg/common/logger"
+	"github.com/openimsdk/open-im-server/v3/pkg/common/prom"
 	"github.com/spf13/cobra"
 	"net"
 )
@@ -22,7 +23,7 @@ func NewAPIRouterCommand() *cobra.Command {
 		Use: "api",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// activate logger here
-			err := logger.Apply(s.Logs)
+			err := logger.Apply(s.Options)
 			if err != nil {
 				return err
 			}
@@ -72,11 +73,13 @@ func Run() error {
 	router := api.NewGinRouter(client, rdb)
 
 	// safe to disable the code, we won't enable the prom until we finish refactor.
-	/*	if config.Config.Prometheus.Enable {
-		p := ginProm.NewPrometheus("app", prommetrics.GetGinCusMetrics("Api"))
-		p.SetListenAddress(fmt.Sprintf(":%d", proPort))
-		p.Use(router)
-	}*/
+	if config.Config.Prometheus.Enable {
+		p := prom.NewProm("app", prom.GetGinMetrics())
+		p.SetListenAddress(fmt.Sprintf(":%d", "fix me with actual port"))
+		/*p := ginProm.NewPrometheus("app", prommetrics.GetGinCusMetrics("Api"))
+		p.SetListenAddress(fmt.Sprintf(":%d", 10002))
+		p.Use(router)*/
+	}
 
 	log.ZInfo(context.Background(), "api init router success")
 	//var address string

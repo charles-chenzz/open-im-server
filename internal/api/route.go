@@ -15,6 +15,7 @@
 package api
 
 import (
+	"github.com/openimsdk/open-im-server/v3/cmd/openim-api/app/options"
 	"net/http"
 
 	"github.com/OpenIMSDK/protocol/constant"
@@ -267,4 +268,157 @@ func GinParseToken(rdb redis.UniversalClient) gin.HandlerFunc {
 			c.Next()
 		}
 	}
+}
+
+func NewRouter(discov discoveryregistry.SvcDiscoveryRegistry, rdb redis.UniversalClient) *gin.Engine {
+	discov.AddOption(mw.GrpcClient(), grpc.WithTransportCredentials(insecure.NewCredentials())) // 默认RPC中间件
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		_ = v.RegisterValidation("required_if", RequiredIf)
+	}
+
+	r.Use(options.WithCors(), options.WithOperationId(), options.WithRecovery())
+
+	rpc := NewRPC(discov)
+	userRouterGroup := r.Group("/user")
+	{
+		userRouterGroup.POST("/user_register", rpc.UserRegister)
+		userRouterGroup.POST("/update_user_info", options.WithToken(rdb), rpc.UpdateUserInfo)
+		userRouterGroup.POST("/set_global_msg_recv_opt", options.WithToken(rdb), rpc.SetGlobalRecvMessageOpt)
+		userRouterGroup.POST("/get_users_info", options.WithToken(rdb), rpc.GetUsersPublicInfo)
+		userRouterGroup.POST("/get_all_users_uid", options.WithToken(rdb), rpc.GetAllUsersID)
+		userRouterGroup.POST("/account_check", options.WithToken(rdb), rpc.AccountCheck)
+		userRouterGroup.POST("/get_users", options.WithToken(rdb), rpc.GetUsers)
+		userRouterGroup.POST("/get_users_online_status", options.WithToken(rdb), rpc.GetUsersOnlineStatus)
+		userRouterGroup.POST("/get_users_online_token_detail", options.WithToken(rdb), rpc.GetUsersOnlineTokenDetail)
+		userRouterGroup.POST("/subscribe_users_status", options.WithToken(rdb), rpc.SubscriberStatus)
+		userRouterGroup.POST("/get_users_status", options.WithToken(rdb), rpc.GetUserStatus)
+		userRouterGroup.POST("/get_subscribe_users_status", options.WithToken(rdb), rpc.GetSubscribeUsersStatus)
+	}
+	// friend routing group
+	friendRouterGroup := r.Group("/friend", options.WithToken(rdb))
+	{
+		friendRouterGroup.POST("/delete_friend", rpc.DeleteFriend)
+		friendRouterGroup.POST("/get_friend_apply_list", rpc.GetFriendApplyList)
+		friendRouterGroup.POST("/get_designated_friend_apply", rpc.GetDesignatedFriendsApply)
+		friendRouterGroup.POST("/get_self_friend_apply_list", rpc.GetSelfApplyList)
+		friendRouterGroup.POST("/get_friend_list", rpc.GetFriendList)
+		friendRouterGroup.POST("/get_designated_friends", rpc.GetDesignatedFriends)
+		friendRouterGroup.POST("/add_friend", rpc.ApplyToAddFriend)
+		friendRouterGroup.POST("/add_friend_response", rpc.RespondFriendApply)
+		friendRouterGroup.POST("/set_friend_remark", rpc.SetFriendRemark)
+		friendRouterGroup.POST("/add_black", rpc.AddBlack)
+		friendRouterGroup.POST("/get_black_list", rpc.GetPaginationBlacks)
+		friendRouterGroup.POST("/remove_black", rpc.RemoveBlack)
+		friendRouterGroup.POST("/import_friend", rpc.ImportFriends)
+		friendRouterGroup.POST("/is_friend", rpc.IsFriend)
+		friendRouterGroup.POST("/get_friend_id", rpc.GetFriendIDs)
+		friendRouterGroup.POST("/get_specified_friends_info", rpc.GetSpecifiedFriendsInfo)
+	}
+
+	groupRouterGroup := r.Group("/group", options.WithToken(rdb))
+	{
+		groupRouterGroup.POST("/create_group", rpc.CreateGroup)
+		groupRouterGroup.POST("/set_group_info", rpc.SetGroupInfo)
+		groupRouterGroup.POST("/join_group", rpc.JoinGroup)
+		groupRouterGroup.POST("/quit_group", rpc.QuitGroup)
+		groupRouterGroup.POST("/group_application_response", rpc.ApplicationGroupResponse)
+		groupRouterGroup.POST("/transfer_group", rpc.TransferGroupOwner)
+		groupRouterGroup.POST("/get_recv_group_applicationList", rpc.GetRecvGroupApplicationList)
+		groupRouterGroup.POST("/get_user_req_group_applicationList", rpc.GetUserReqGroupApplicationList)
+		groupRouterGroup.POST("/get_group_users_req_application_list", rpc.GetGroupUsersReqApplicationList)
+		groupRouterGroup.POST("/get_groups_info", rpc.GetGroupsInfo)
+		groupRouterGroup.POST("/kick_group", rpc.KickGroupMember)
+		groupRouterGroup.POST("/get_group_members_info", rpc.GetGroupMembersInfo)
+		groupRouterGroup.POST("/get_group_member_list", rpc.GetGroupMemberList)
+		groupRouterGroup.POST("/invite_user_to_group", rpc.InviteUserToGroup)
+		groupRouterGroup.POST("/get_joined_group_list", rpc.GetJoinedGroupList)
+		groupRouterGroup.POST("/dismiss_group", rpc.DismissGroup)
+		groupRouterGroup.POST("/mute_group_member", rpc.MuteGroupMember)
+		groupRouterGroup.POST("/cancel_mute_group_member", rpc.CancelMuteGroupMember)
+		groupRouterGroup.POST("/mute_group", rpc.MuteGroup)
+		groupRouterGroup.POST("/cancel_mute_group", rpc.CancelMuteGroup)
+		groupRouterGroup.POST("/set_group_member_info", rpc.SetGroupMemberInfo)
+		groupRouterGroup.POST("/get_group_abstract_info", rpc.GetGroupAbstractInfo)
+		groupRouterGroup.POST("/get_groups", rpc.GetGroups)
+		groupRouterGroup.POST("/get_group_member_user_id", rpc.GetGroupMemberUserIDs)
+	}
+	superGroupRouterGroup := r.Group("/super_group", options.WithToken(rdb))
+	{
+		superGroupRouterGroup.POST("/get_joined_group_list", rpc.GetJoinedSuperGroupList)
+		superGroupRouterGroup.POST("/get_groups_info", rpc.GetSuperGroupsInfo)
+	}
+	// certificate
+	authRouterGroup := r.Group("/auth")
+	{
+		authRouterGroup.POST("/user_token", rpc.UserToken)
+		authRouterGroup.POST("/parse_token", rpc.ParseToken)
+		authRouterGroup.POST("/force_logout", options.WithToken(rdb), rpc.ForceLogout)
+	}
+	// Third service
+	thirdGroup := r.Group("/third", options.WithToken(rdb))
+	{
+		thirdGroup.GET("/prometheus", GetPrometheus)
+
+		thirdGroup.POST("/fcm_update_token", rpc.FcmUpdateToken)
+		thirdGroup.POST("/set_app_badge", rpc.SetAppBadge)
+
+		logs := thirdGroup.Group("/logs")
+		logs.POST("/upload", rpc.UploadLogs)
+		logs.POST("/delete", rpc.DeleteLogs)
+		logs.POST("/search", rpc.SearchLogs)
+
+		objectGroup := r.Group("/object", options.WithToken(rdb))
+
+		objectGroup.POST("/part_limit", rpc.PartLimit)
+		objectGroup.POST("/part_size", rpc.PartSize)
+		objectGroup.POST("/initiate_multipart_upload", rpc.InitiateMultipartUpload)
+		objectGroup.POST("/auth_sign", rpc.AuthSign)
+		objectGroup.POST("/complete_multipart_upload", rpc.CompleteMultipartUpload)
+		objectGroup.POST("/access_url", rpc.AccessURL)
+		objectGroup.GET("/*name", rpc.ObjectRedirect)
+	}
+	// Message
+	msgGroup := r.Group("/msg", options.WithToken(rdb))
+	{
+		msgGroup.POST("/newest_seq", rpc.GetSeq)
+		msgGroup.POST("/search_msg", rpc.SearchMsg)
+		msgGroup.POST("/send_msg", rpc.SendMessage)
+		msgGroup.POST("/send_business_notification", rpc.SendBusinessNotification)
+		msgGroup.POST("/pull_msg_by_seq", rpc.PullMsgBySeqs)
+		msgGroup.POST("/revoke_msg", rpc.RevokeMsg)
+		msgGroup.POST("/mark_msgs_as_read", rpc.MarkMsgsAsRead)
+		msgGroup.POST("/mark_conversation_as_read", rpc.MarkConversationAsRead)
+		msgGroup.POST("/get_conversations_has_read_and_max_seq", rpc.GetConversationsHasReadAndMaxSeq)
+		msgGroup.POST("/set_conversation_has_read_seq", rpc.SetConversationHasReadSeq)
+
+		msgGroup.POST("/clear_conversation_msg", rpc.ClearConversationsMsg)
+		msgGroup.POST("/user_clear_all_msg", rpc.UserClearAllMsg)
+		msgGroup.POST("/delete_msgs", rpc.DeleteMsgs)
+		msgGroup.POST("/delete_msg_phsical_by_seq", rpc.DeleteMsgPhysicalBySeq)
+		msgGroup.POST("/delete_msg_physical", rpc.DeleteMsgPhysical)
+
+		msgGroup.POST("/batch_send_msg", rpc.BatchSendMsg)
+		msgGroup.POST("/check_msg_is_send_success", rpc.CheckMsgIsSendSuccess)
+		msgGroup.POST("/get_server_time", rpc.GetServerTime)
+	}
+	// Conversation
+	conversationGroup := r.Group("/conversation", options.WithToken(rdb))
+	{
+		conversationGroup.POST("/get_all_conversations", rpc.GetAllConversations)
+		conversationGroup.POST("/get_conversation", rpc.GetConversation)
+		conversationGroup.POST("/get_conversations", rpc.GetConversations)
+		conversationGroup.POST("/set_conversations", rpc.SetConversations)
+		conversationGroup.POST("/get_conversation_offline_push_user_ids", rpc.GetConversationOfflinePushUserIDs)
+	}
+
+	statisticsGroup := r.Group("/statistics", options.WithToken(rdb))
+	{
+		statisticsGroup.POST("/user/register", rpc.UserRegisterCount)
+		statisticsGroup.POST("/user/active", rpc.GetActiveUser)
+		statisticsGroup.POST("/group/create", rpc.GroupCreateCount)
+		statisticsGroup.POST("/group/active", rpc.GetActiveGroup)
+	}
+	return r
 }
